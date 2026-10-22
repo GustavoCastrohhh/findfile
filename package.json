@@ -1,0 +1,18 @@
+{
+  "name": "rscover",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Desktop file-recovery utility built with Tauri.",
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "cross-env PATH=%USERPROFILE%\\.cargo\\bin;%PATH% tauri dev",
+    "build": "cross-env PATH=%USERPROFILE%\\.cargo\\bin;%PATH% tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  },
+  "dependencies": {
+    "@tauri-apps/plugin-dialog": "^2.7.3"
+  }
+}

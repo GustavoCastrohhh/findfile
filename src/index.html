@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rscover – File Recovery</title>
+    <meta name="description" content="Recuperação forense de arquivos por assinatura de bytes em dispositivos de armazenamento." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="global-progress" class="global-progress hidden" title="Busca em andamento">
+      <div id="global-progress-fill" class="global-progress-fill"></div>
+    </div>
+    <!-- ============================================================ -->
+    <!-- TELA 1 – Seleção de dispositivo                              -->
+    <!-- ============================================================ -->
+    <div id="screen-1" class="screen active">
+      <header class="app-header">
+        <div class="logo">
+          <span class="logo-icon">🔍</span>
+          <span class="logo-text">Rscover</span>
+        </div>
+        <div class="header-right">
+          <span class="app-version">v1.0.0</span>
+          <button id="btn-log-1" class="btn-log" title="Ver log">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 17 10 11 4 5"/>
+              <line x1="12" y1="19" x2="20" y2="19"/>
+            </svg>
+            Log
+            <span class="log-badge" id="log-badge-1"></span>
+          </button>
+        </div>
+      </header>
+
+      <main class="screen-content">
+        <div class="hero">
+          <h1 class="hero-title">Selecione um Dispositivo</h1>
+          <p class="hero-sub">Escolha o disco ou partição para iniciar a recuperação de arquivos.</p>
+        </div>
+
+        <div class="device-toolbar">
+          <button id="btn-refresh" class="btn-icon" title="Atualizar lista">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"/>
+              <polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+            </svg>
+            Atualizar
+          </button>
+          <span id="device-count" class="device-count">Buscando dispositivos...</span>
+        </div>
+
+        <div id="device-list" class="device-list">
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <span>Detectando dispositivos...</span>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TELA 2 – Painel do disco (busca + tipos)                     -->
+    <!-- ============================================================ -->
+    <div id="screen-2" class="screen">
+      <header class="app-header">
+        <button id="btn-back-2" class="btn-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Go Back
+        </button>
+        <div class="logo">
+          <span class="logo-icon">🔍</span>
+          <span class="logo-text">Rscover</span>
+        </div>
+        <div class="header-right">
+          <span class="app-version">v1.0.0</span>
+          <button id="btn-log-2" class="btn-log" title="Ver log">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 17 10 11 4 5"/>
+              <line x1="12" y1="19" x2="20" y2="19"/>
+            </svg>
+            Log
+            <span class="log-badge" id="log-badge-2"></span>
+          </button>
+        </div>
+      </header>
+
+      <main class="screen-content">
+        <div class="hero">
+          <h1 class="hero-title">Disk "<span id="selected-disk-label">/dev/sda</span>"</h1>
+          <p class="hero-sub">Escolha a pasta de saída e inicie a busca. Clique num tipo para ver os arquivos encontrados — inclusive durante a busca.</p>
+        </div>
+
+        <!-- Output directory -->
+        <div class="output-dir-row">
+          <label class="output-label" for="output-dir-input">Pasta de saída</label>
+          <div class="output-input-wrap">
+            <input type="text" id="output-dir-input" class="output-input" placeholder="Ex: D:\Recuperados ou /home/user/recovered" />
+            <button id="btn-browse" class="btn-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+              </svg>
+              Escolher
+            </button>
+          </div>
+          <p id="output-dir-error" class="output-error hidden" role="alert"></p>
+        </div>
+
+        <!-- Search controls -->
+        <div class="search-controls">
+          <button id="btn-start" class="btn-primary btn-start">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            Iniciar Busca
+          </button>
+          <button id="btn-stop" class="btn-danger hidden">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+            </svg>
+            Parar
+          </button>
+        </div>
+
+        <!-- Progress -->
+        <div id="progress-section" class="progress-section hidden">
+          <div class="progress-header">
+            <span id="status-text" class="status-text">Aguardando...</span>
+            <span id="found-count" class="found-count">0 arquivos</span>
+          </div>
+          <div class="progress-bar-track large">
+            <div class="progress-bar-fill animated" id="main-bar" style="width:0%"></div>
+          </div>
+          <div class="progress-meta">
+            <span id="bytes-read-label">0 B lidos</span>
+            <span id="main-percent">0%</span>
+            <span id="total-size-label">de 0 B</span>
+          </div>
+        </div>
+
+        <!-- Tipos: o botão abre a galeria; a caixa define se entra na busca -->
+        <div class="file-type-grid" id="file-type-grid">
+          <div class="type-card" data-type="jpeg">
+            <button class="file-type-btn type-card-open" data-open="jpeg">
+              <span class="ft-icon">🖼️</span>
+              <span class="ft-label">JPEG</span>
+              <span class="ft-count" data-count="jpeg">0</span>
+            </button>
+            <label class="type-card-include" title="Incluir JPEG na busca">
+              <input type="checkbox" data-include="jpeg" checked />
+            </label>
+          </div>
+          <div class="type-card" data-type="png">
+            <button class="file-type-btn type-card-open" data-open="png">
+              <span class="ft-icon">🏞️</span>
+              <span class="ft-label">PNG</span>
+              <span class="ft-count" data-count="png">0</span>
+            </button>
+            <label class="type-card-include" title="Incluir PNG na busca">
+              <input type="checkbox" data-include="png" checked />
+            </label>
+          </div>
+          <div class="type-card" data-type="pdf">
+            <button class="file-type-btn type-card-open" data-open="pdf">
+              <span class="ft-icon">📄</span>
+              <span class="ft-label">PDF</span>
+              <span class="ft-count" data-count="pdf">0</span>
+            </button>
+            <label class="type-card-include" title="Incluir PDF na busca">
+              <input type="checkbox" data-include="pdf" checked />
+            </label>
+          </div>
+          <div class="type-card" data-type="zip">
+            <button class="file-type-btn type-card-open" data-open="zip">
+              <span class="ft-icon">📦</span>
+              <span class="ft-label">ZIP</span>
+              <span class="ft-count" data-count="zip">0</span>
+            </button>
+            <label class="type-card-include" title="Incluir ZIP na busca">
+              <input type="checkbox" data-include="zip" checked />
+            </label>
+          </div>
+          <div class="type-card" data-type="text">
+            <button class="file-type-btn type-card-open" data-open="text">
+              <span class="ft-icon">📝</span>
+              <span class="ft-label">Text</span>
+              <span class="ft-count" data-count="text">0</span>
+            </button>
+            <label class="type-card-include" title="Incluir Text na busca">
+              <input type="checkbox" data-include="text" checked />
+            </label>
+          </div>
+          <div class="type-card" data-type="mp4">
+            <button class="file-type-btn type-card-open" data-open="mp4">
+              <span class="ft-icon">🎬</span>
+              <span class="ft-label">MP4</span>
+              <span class="ft-count" data-count="mp4">0</span>
+            </button>
+            <label class="type-card-include" title="Incluir MP4 na busca">
+              <input type="checkbox" data-include="mp4" checked />
+            </label>
+          </div>
+          <button class="file-type-btn view-blocks-btn" id="btn-view-blocks">
+            <span class="ft-icon">🔬</span>
+            <span class="ft-label">View Blocks</span>
+          </button>
+        </div>
+      </main>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TELA BLOCOS – Mapa de ocupação do dispositivo                -->
+    <!-- ============================================================ -->
+    <div id="screen-blocks" class="screen">
+      <header class="app-header">
+        <button id="btn-back-blocks" class="btn-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Go Back
+        </button>
+        <div class="logo">
+          <span class="logo-icon">🔍</span>
+          <span class="logo-text">Rscover</span>
+        </div>
+        <div class="header-right">
+          <span class="app-version">v1.0.0</span>
+          <button id="btn-log-4" class="btn-log" title="Ver log">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 17 10 11 4 5"/>
+              <line x1="12" y1="19" x2="20" y2="19"/>
+            </svg>
+            Log
+            <span class="log-badge" id="log-badge-4"></span>
+          </button>
+        </div>
+      </header>
+
+      <main class="screen-content blocks-content">
+        <div class="hero">
+          <h1 class="hero-title">Disk "<span id="blocks-disk-label"></span>"</h1>
+          <p class="blocks-usage" id="blocks-usage">Analisando... 0%</p>
+        </div>
+
+        <div id="block-grid" class="block-grid" aria-label="Mapa de blocos do dispositivo"></div>
+
+        <div class="block-legend">
+          <span><i class="legend-swatch used"></i>Com dados</span>
+          <span><i class="legend-swatch partial"></i>Parcial</span>
+          <span><i class="legend-swatch"></i>Vazio</span>
+          <span class="block-legend-note">Cada célula = 1/200 do dispositivo (amostrado)</span>
+        </div>
+      </main>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TELA 3 – Galeria de um tipo                                   -->
+    <!-- ============================================================ -->
+    <div id="screen-3" class="screen">
+      <header class="app-header">
+        <button id="btn-back-3" class="btn-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Go Back
+        </button>
+        <div class="logo">
+          <span class="logo-icon">🔍</span>
+          <span class="logo-text">Rscover</span>
+        </div>
+        <div class="header-right">
+          <span class="app-version">v1.0.0</span>
+          <button id="btn-log-3" class="btn-log" title="Ver log">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 17 10 11 4 5"/>
+              <line x1="12" y1="19" x2="20" y2="19"/>
+            </svg>
+            Log
+            <span class="log-badge" id="log-badge-3"></span>
+          </button>
+        </div>
+      </header>
+
+      <main class="screen-content">
+        <div class="hero">
+          <h1 class="hero-title"><span id="gallery-icon"></span> <span id="gallery-title"></span></h1>
+          <p class="hero-sub">
+            <span id="gallery-count">0 arquivos</span> &nbsp;·&nbsp; Disco <code id="gallery-disk"></code>
+          </p>
+          <p id="gallery-status" class="gallery-status"></p>
+        </div>
+
+        <div id="gallery-empty" class="gallery-empty hidden"></div>
+        <div id="found-files-list" class="found-files-grid"></div>
+      </main>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- VISUALIZADOR DE ARQUIVO                                      -->
+    <!-- ============================================================ -->
+    <div id="viewer-panel" class="log-panel viewer-panel" aria-hidden="true">
+      <div id="viewer-backdrop" class="log-backdrop"></div>
+      <aside class="log-drawer viewer-drawer">
+        <div class="log-drawer-header">
+          <div class="viewer-heading">
+            <span id="viewer-title" class="viewer-title"></span>
+            <span id="viewer-meta" class="viewer-meta"></span>
+          </div>
+          <div class="log-drawer-actions">
+            <button id="btn-viewer-reveal" class="btn-log-action" title="Abrir a pasta onde o arquivo está">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+              </svg>
+            </button>
+            <button id="btn-viewer-open" class="btn-log-action" title="Abrir no aplicativo padrão">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </button>
+            <button id="btn-viewer-close" class="btn-log-action btn-log-close" title="Fechar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div id="viewer-body" class="viewer-body"></div>
+      </aside>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- LOG PANEL                                                    -->
+    <!-- ============================================================ -->
+    <div id="log-panel" class="log-panel" aria-hidden="true">
+      <div id="log-backdrop" class="log-backdrop"></div>
+      <aside class="log-drawer">
+        <div class="log-drawer-header">
+          <div class="log-drawer-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 17 10 11 4 5"/>
+              <line x1="12" y1="19" x2="20" y2="19"/>
+            </svg>
+            Log de Eventos
+          </div>
+          <div class="log-drawer-actions">
+            <button id="btn-log-clear" class="btn-log-action" title="Limpar log">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/>
+                <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+              </svg>
+            </button>
+            <button id="btn-log-close" class="btn-log-action btn-log-close" title="Fechar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="log-filter-bar">
+          <button class="log-filter-btn active" data-level="all">Todos</button>
+          <button class="log-filter-btn" data-level="info">Info</button>
+          <button class="log-filter-btn" data-level="success">Sucesso</button>
+          <button class="log-filter-btn" data-level="warn">Aviso</button>
+          <button class="log-filter-btn" data-level="error">Erro</button>
+        </div>
+        <div id="log-entries" class="log-entries"></div>
+        <div class="log-drawer-footer">
+          <span id="log-count" class="log-entry-count">0 entradas</span>
+          <label class="log-autoscroll">
+            <input type="checkbox" id="log-autoscroll-cb" checked />
+            Auto-scroll
+          </label>
+        </div>
+      </aside>
+    </div>
+
+    <script src="main.js"></script>
+  </body>
+</html>
